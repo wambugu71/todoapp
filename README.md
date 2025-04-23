@@ -1,4 +1,4 @@
-```markdown
+
 # TODO App
 
 A simple, intuitive Flutter-based TODO application that allows users to manage their tasks effectively. The app supports task creation, deletion, and marking tasks as completed, with persistent storage for saving tasks locally.
