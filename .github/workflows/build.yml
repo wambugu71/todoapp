@@ -1,0 +1,139 @@
+name: Todo app build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            targets: web,linux
+          - os: windows-latest
+            targets: windows
+          - os: macos-latest
+            targets: ios,macos,android
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.16.0'
+      
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev
+
+      - name: Flutter pub get
+        run: flutter pub get
+      
+      - name: Flutter analyze
+        run: flutter analyze
+      
+      - name: Flutter test
+        run: flutter test
+
+      # Android Build
+      - name: Build Android APK
+        if: contains(matrix.targets, 'android')
+        run: flutter build apk --release --target-platform android-arm
+      
+      - name: Build Android App Bundle
+        if: contains(matrix.targets, 'android')
+        run: flutter build appbundle --release  --target-platform android-arm
+      
+      # iOS Build
+      - name: Build iOS
+        if: contains(matrix.targets, 'ios')
+        run: |
+          flutter build ios --release --no-codesign
+      
+      # macOS Build
+      - name: Build macOS
+        if: contains(matrix.targets, 'macos')
+        run: |
+          flutter config --enable-macos-desktop
+          flutter build macos --release
+      
+      # Windows Build
+      - name: Build Windows
+        if: contains(matrix.targets, 'windows')
+        run: |
+          flutter config --enable-windows-desktop
+          flutter build windows --release
+      
+      # Linux Build
+      - name: Build Linux
+        if: contains(matrix.targets, 'linux')
+        run: |
+          flutter config --enable-linux-desktop
+          flutter build linux --release
+      
+      # Web Build
+      - name: Build Web
+        if: contains(matrix.targets, 'web')
+        run: |
+          flutter build web --release
+      
+      # Upload build artifacts
+      - name: Upload Android Build
+        if: contains(matrix.targets, 'android')
+        uses: actions/upload-artifact@v3
+        with:
+          name: android-build
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
+      
+      - name: Upload iOS Build
+        if: contains(matrix.targets, 'ios')
+        uses: actions/upload-artifact@v3
+        with:
+          name: ios-build
+          path: build/ios/iphoneos
+      
+      - name: Upload macOS Build
+        if: contains(matrix.targets, 'macos')
+        uses: actions/upload-artifact@v3
+        with:
+          name: macos-build
+          path: build/macos/Build/Products/Release
+      
+      - name: Upload Windows Build
+        if: contains(matrix.targets, 'windows')
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-build
+          path: build/windows/runner/Release
+      
+      - name: Upload Linux Build
+        if: contains(matrix.targets, 'linux')
+        uses: actions/upload-artifact@v3
+        with:
+          name: linux-build
+          path: build/linux/x64/release/bundle
+      
+      - name: Upload Web Build
+        if: contains(matrix.targets, 'web')
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-build
+          path: build/web
