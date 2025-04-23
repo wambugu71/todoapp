@@ -1,10 +1,16 @@
-name: Flutter CI/CD
+name: todo app build
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  release:
+    types: [created]
+  # Alternative: Trigger on tags
+  # push:
+  #   tags:
+  #     - 'v*'
 
 jobs:
   build:
@@ -15,11 +21,11 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
-            targets: web,linux
+            targets: android,web,linux
           - os: windows-latest
             targets: windows
           - os: macos-latest
-            targets: ios,macos,android
+            targets: ios,macos
 
     steps:
       - uses: actions/checkout@v4
@@ -48,11 +54,7 @@ jobs:
       # Android Build
       - name: Build Android APK
         if: contains(matrix.targets, 'android')
-        run: flutter build apk --release
-      
-      - name: Build Android App Bundle
-        if: contains(matrix.targets, 'android')
-        run: flutter build appbundle --release
+        run: flutter build apk --release --target-platform android-arm
       
       # iOS Build
       - name: Build iOS
@@ -66,6 +68,9 @@ jobs:
         run: |
           flutter config --enable-macos-desktop
           flutter build macos --release
+          # Create a ZIP file of the macOS app
+          cd build/macos/Build/Products/Release
+          zip -r macos-app.zip *.app
       
       # Windows Build
       - name: Build Windows
@@ -73,6 +78,9 @@ jobs:
         run: |
           flutter config --enable-windows-desktop
           flutter build windows --release
+          # Create a ZIP file of the Windows app
+          cd build/windows/runner/Release
+          Compress-Archive -Path * -DestinationPath windows-app.zip
       
       # Linux Build
       - name: Build Linux
@@ -80,14 +88,20 @@ jobs:
         run: |
           flutter config --enable-linux-desktop
           flutter build linux --release
+          # Create a TAR file of the Linux app
+          cd build/linux/x64/release/bundle
+          tar -czf linux-app.tar.gz *
       
       # Web Build
       - name: Build Web
         if: contains(matrix.targets, 'web')
         run: |
           flutter build web --release
+          # Create a ZIP file of the web app
+          cd build/web
+          zip -r web-app.zip *
       
-      # Upload build artifacts
+      # Upload artifacts for workflow use
       - name: Upload Android Build
         if: contains(matrix.targets, 'android')
         uses: actions/upload-artifact@v4
@@ -109,25 +123,57 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-build
-          path: build/macos/Build/Products/Release
+          path: build/macos/Build/Products/Release/macos-app.zip
       
       - name: Upload Windows Build
         if: contains(matrix.targets, 'windows')
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: build/windows/runner/Release
+          path: build/windows/runner/Release/windows-app.zip
       
       - name: Upload Linux Build
         if: contains(matrix.targets, 'linux')
         uses: actions/upload-artifact@v4
         with:
           name: linux-build
-          path: build/linux/x64/release/bundle
+          path: build/linux/x64/release/bundle/linux-app.tar.gz
       
       - name: Upload Web Build
         if: contains(matrix.targets, 'web')
         uses: actions/upload-artifact@v4
         with:
           name: web-build
-          path: build/web
+          path: build/web/web-app.zip
+      
+      # Upload to GitHub Releases
+      - name: Upload Android APK to Release
+        if: github.event_name == 'release' && contains(matrix.targets, 'android')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/app/outputs/flutter-apk/app-release.apk
+      
+      - name: Upload macOS App to Release
+        if: github.event_name == 'release' && contains(matrix.targets, 'macos')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/macos/Build/Products/Release/macos-app.zip
+      
+      - name: Upload Windows App to Release
+        if: github.event_name == 'release' && contains(matrix.targets, 'windows')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/windows/runner/Release/windows-app.zip
+      
+      - name: Upload Linux App to Release
+        if: github.event_name == 'release' && contains(matrix.targets, 'linux')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/linux/x64/release/bundle/linux-app.tar.gz
+      
+      - name: Upload Web App to Release
+        if: github.event_name == 'release' && contains(matrix.targets, 'web')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build/web/web-app.zip
