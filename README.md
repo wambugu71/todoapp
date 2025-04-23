@@ -148,5 +148,3 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Contact
 
 Created by [@wambugu71](https://github.com/wambugu71). Feel free to reach out with any questions or suggestions!
-
-```
