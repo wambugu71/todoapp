@@ -78,6 +78,8 @@ jobs:
         run: |
           flutter config --enable-windows-desktop
           flutter build windows --release
+          cd build\windows\x64\runner\Release
+          Compress-Archive -Path *.exe -DestinationPath "windows-app.zip"
       # Linux Build
       - name: Build Linux
         if: contains(matrix.targets, 'linux')
